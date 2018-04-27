@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 #define PROMPT "lambda-shell$ "
 
@@ -102,20 +103,41 @@ int main(void)
         #endif
 
         /* Add your code for implementing the shell's logic here */
-        if (args[0] && strcmp(args[0], "exit")) {
+        if (args[0] && strcmp(args[0], "exit") != 0) {
             int new_fork = fork();
             if (new_fork < 0) {
                 printf("Failure starting child process!\n");
                 exit(1);
             } else if (new_fork == 0){
-                printf("Forking new process\n");
-                char command_path[100];
-                sprintf(command_path, "%s%s", PATH, args[0]);
-                execvp(command_path, args);
+                // Executed chdir() if 'cd' was first argument 
+                if (strcmp(args[0], "cd") == 0) {
+                    printf("%d\n", strcmp(args[0], "cd"));
+                    if (args_count != 2) {
+                        printf("Invalid argument count for 'cd' command!\n");
+                        continue;
+                    } else {
+                        int new_dir = chdir(args[1]);
+                        if (new_dir == -1) {
+                            perror("chdir");
+                            continue;
+                        } else {
+                            printf("Successfully cd'd!\n");
+                            continue;
+                        }
+                    }
+                } else {
+                    // Execute arbitray commands if 'cd' or 'exit' was not called
+                    printf("Forking new process\n");
+                    char command_path[100];
+                    sprintf(command_path, "%s%s", PATH, args[0]);
+                    execvp(command_path, args);
+                }
             } else {
                 waitpid(new_fork, NULL, 0);
                 printf("Back to parent process\n");
             }
+        } else if (strcmp(args[0], "exit") == 0) {
+            break;
         }
 
     }
