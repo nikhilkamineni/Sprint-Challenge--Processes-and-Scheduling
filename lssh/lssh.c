@@ -4,11 +4,14 @@
 #include <string.h>
 #include <errno.h>
 
-#define PROMPT "lambda-shell$ "
+#define PROMPT "lambda-shell$"
 
 #define MAX_TOKENS 100
 #define COMMANDLINE_BUFSIZE 1024
-#define DEBUG 1  // Set to 1 to turn on some debugging output, or 0 to turn off
+#define DEBUG 0  // Set to 1 to turn on some debugging output, or 0 to turn off
+
+#define COMMAND_PROMPT_COLOR "\e[4;31m"
+#define COLOR_RESET "\x1b[0m"
 
 /**
  * Parse the command line.
@@ -63,11 +66,18 @@ int main(void)
     // How many command line args the user typed
     int args_count;
 
+    // Flag used to indicate if command should be run in background ('&')
+    int bg_flag;
+
     // Shell loops forever (until we tell it to exit)
     while (1) {
         // Print a prompt
-        printf("%s", PROMPT);
+        printf(COMMAND_PROMPT_COLOR "%s" COLOR_RESET " ", PROMPT);
         fflush(stdout); // Force the line above to print
+
+        // Wait for any other processes that have ended in the meantime. 
+        while (waitpid(-1, NULL, WNOHANG) > 0)
+            ;
 
         // Read input from keyboard
         fgets(commandline, sizeof commandline, stdin);
@@ -88,6 +98,13 @@ int main(void)
         // Exit the shell if args[0] is the built-in "exit" command
         if (strcmp(args[0], "exit") == 0) {
             break;
+        }
+
+        // Check if flagged as background process and strip flag from args
+        bg_flag = 0;
+        if (strcmp(args[args_count - 1], "&") == 0) {
+            bg_flag = 1;
+            args[args_count - 1] = NULL;
         }
 
         #if DEBUG
@@ -117,23 +134,23 @@ int main(void)
                     continue;
                 }
             }
-        }
+        } else if (args[0] != NULL){
+            pid_t new_fork = fork();
 
-        if (args[0] && strcmp(args[0], "exit") != 0) {
-            int new_fork = fork();
             if (new_fork < 0) {
                 printf("|-- Failure starting child process! --|\n");
-                exit(1);
-            } else if (new_fork == 0){
-                    // Execute arbitray commands if 'cd' or 'exit' was not called
-                    printf("|-- Forking new process --|\n");
-                    execvp(args[0], args);
-            } else {
-                waitpid(new_fork, NULL, 0);
-                printf("|-- Back to parent process --|\n");
+                continue;
             }
-        } else if (strcmp(args[0], "exit") == 0) {
-            break;
+
+            if (new_fork == 0){
+                // Execute arbitray commands if 'cd' or 'exit' was not called
+                execvp(args[0], args);
+                exit(1);
+            } else {
+                if (!bg_flag) {
+                    wait(NULL);
+                }
+            }
         }
 
     }
