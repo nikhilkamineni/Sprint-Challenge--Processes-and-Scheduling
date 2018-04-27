@@ -10,7 +10,6 @@
 #define COMMANDLINE_BUFSIZE 1024
 #define DEBUG 1  // Set to 1 to turn on some debugging output, or 0 to turn off
 
-#define PATH "/bin/"
 /**
  * Parse the command line.
  *
@@ -128,8 +127,6 @@ int main(void)
             } else if (new_fork == 0){
                     // Execute arbitray commands if 'cd' or 'exit' was not called
                     printf("|-- Forking new process --|\n");
-                    char command_path[100];
-                    sprintf(command_path, "%s%s", PATH, args[0]);
                     execvp(args[0], args);
             } else {
                 waitpid(new_fork, NULL, 0);
