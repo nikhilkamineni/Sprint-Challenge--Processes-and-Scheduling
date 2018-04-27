@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 
 #define PROMPT "lambda-shell$"
 
@@ -52,6 +53,12 @@ char **parse_commandline(char *str, char **args, int *args_count)
     return args;
 }
 
+void signal_handler() 
+{
+    while (waitpid(-1, NULL, WNOHANG) > 0)
+        ;
+}
+
 /**
  * Main
  */
@@ -69,15 +76,14 @@ int main(void)
     // Flag used to indicate if command should be run in background ('&')
     int bg_flag;
 
+
     // Shell loops forever (until we tell it to exit)
     while (1) {
         // Print a prompt
         printf(COMMAND_PROMPT_COLOR "%s" COLOR_RESET " ", PROMPT);
         fflush(stdout); // Force the line above to print
 
-        // Wait for any other processes that have ended in the meantime. 
-        while (waitpid(-1, NULL, WNOHANG) > 0)
-            ;
+        signal(SIGCHLD, signal_handler);
 
         // Read input from keyboard
         fgets(commandline, sizeof commandline, stdin);
