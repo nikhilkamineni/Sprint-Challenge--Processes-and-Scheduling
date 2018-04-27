@@ -9,6 +9,7 @@
 #define COMMANDLINE_BUFSIZE 1024
 #define DEBUG 1  // Set to 1 to turn on some debugging output, or 0 to turn off
 
+#define PATH "/bin/"
 /**
  * Parse the command line.
  *
@@ -32,7 +33,7 @@
 char **parse_commandline(char *str, char **args, int *args_count)
 {
     char *token;
-    
+
     *args_count = 0;
 
     token = strtok(str, " \t\n\r");
@@ -99,9 +100,24 @@ int main(void)
         }
 
         #endif
-        
+
         /* Add your code for implementing the shell's logic here */
-        
+        if (args[0] && strcmp(args[0], "exit")) {
+            int new_fork = fork();
+            if (new_fork < 0) {
+                printf("Failure starting child process!\n");
+                exit(1);
+            } else if (new_fork == 0){
+                printf("Forking new process\n");
+                char command_path[100];
+                sprintf(command_path, "%s%s", PATH, args[0]);
+                execvp(command_path, args);
+            } else {
+                waitpid(new_fork, NULL, 0);
+                printf("Back to parent process\n");
+            }
+        }
+
     }
 
     return 0;
